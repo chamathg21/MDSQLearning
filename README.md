@@ -3,7 +3,7 @@
 This repository reflects the paper's hybrid design:
 
 - A supervised grid-based detector handles all five VeReMi attack families.
-- A Q-learning detector implements the paper's score-based RL method for the binary random and random-offset cases.
+- A Q-learning detector implements the paper's score-based RL method for the binary random and random-offset cases using the paper's reward mapping and passive-observation transition rule.
 
 ## Repository Structure
 
@@ -74,10 +74,11 @@ The RL evaluation now uses a cumulative, evidence-based metric with a minimum ev
 1. The script loads the requested scenario's BSM traces and ground-truth labels.
 2. It splits the message stream chronologically into a 70/30 train/test split.
 3. It trains a Q-learning agent for 500 episodes using the paper's RL settings.
-4. During evaluation, it computes the score
+4. During training, each observed cluster transition is encoded as a stay/switch outcome, and the reward follows the paper's mapping: +1 for low/stay, 0 for high/stay, and -1 otherwise.
+5. During evaluation, it computes the score
    `Q(low, stay) - Q(high, stay) - Q(high, switch)`
    and uses it with the paper's threshold `theta = 0.5`.
-5. Accuracy is sampled over the sequential BSM stream with a rolling average so the curve reflects gradual learning behavior rather than abrupt jumps.
+6. Accuracy is sampled over the sequential BSM stream with a rolling average so the curve reflects gradual learning behavior rather than abrupt jumps.
 
 ## Notes
 

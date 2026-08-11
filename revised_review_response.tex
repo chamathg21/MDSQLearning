@@ -192,7 +192,7 @@ Each agent $A_i$ uses a Q-learning algorithm, where the RL environment is define
     \[
     \mathcal{A} = \{\text{stay}, \text{switch}\}
     \]
-    where \texttt{stay} indicates that the vehicle remains in the same cluster as the previous round, and \texttt{switch} indicates it has changed clusters.
+    where \texttt{stay} indicates that the vehicle remains in the same cluster as the previous round, and \texttt{switch} indicates the observed cluster assignment has changed between consecutive rounds.
 
     \item \textbf{Reward function} $R(s,a)$:
     The reward function is designed to reflect suspicion based on vehicle behavior:
@@ -204,7 +204,7 @@ Each agent $A_i$ uses a Q-learning algorithm, where the RL environment is define
         -1, & \text{if } a = \text{switch} \\
     \end{cases}
     \]
-    This reward structure encourages stability in the low-distance cluster while penalizing frequent switching or persistent presence in the high-distance cluster, which are indicative of suspicious behavior.
+    This reward structure encourages stability in the low-distance cluster while penalizing frequent switching or persistent presence in the high-distance cluster, which are indicative of suspicious behavior. In the implementation, the transition from one clustering round to the next is treated as an observed stay/switch outcome, and the reward is assigned according to the paper's mapping: $+1$ for low/stay, $0$ for high/stay, and $-1$ otherwise.
 \end{itemize}
 
 \subsection{Q-Learning Algorithm}

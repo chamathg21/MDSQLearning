@@ -12,10 +12,11 @@ import numpy as np
 # Issue 2 / Issue 3 / Issue 4 / Issue 5 documentation:
 # The paper's RL workflow is a binary, score-based Q-learning detector for
 # random and random-offset attacks. The implementation below follows the
-# stated paper configuration: alpha=0.1, gamma=0.9, epsilon=0.1, theta=0.5,
-# 500 training episodes, and a 70/30 sender split. Classification is based on
-# the score rule Score(v_i) = Q(low,stay) - Q(high,stay) - Q(high,switch)
-# using theta as the detection threshold.
+# paper configuration: alpha=0.1, gamma=0.9, theta=0.5, 500 training
+# episodes, and a 70/30 sender split. Training uses the paper reward mapping
+# (+1 for low/stay, 0 for high/stay, -1 otherwise) and treats the cluster
+# transition as an observed stay/switch outcome rather than an actively chosen
+# action.
 
 Q_TABLE_TEMPLATE = {
     ("low", "stay"): 0.0,
@@ -143,17 +144,24 @@ def score_sender(q_table, sender_id):
     return q[("low", "stay")] - q[("high", "stay")] - q[("high", "switch")]
 
 
-def choose_action(state, sender_q, epsilon):
-    # Epsilon-greedy policy: keep the paper's exploration rate in the loop.
-    if random.random() < epsilon:
-        return random.choice(["stay", "switch"])
+def transition_action(previous_state, current_state):
+    """Map the observed cluster transition to the paper's stay/switch action."""
+    return "stay" if previous_state == current_state else "switch"
 
-    stay_value = sender_q[(state, "stay")]
-    switch_value = sender_q[(state, "switch")]
 
-    if state == "high":
-        return "switch" if switch_value >= stay_value else "stay"
-    return "stay" if stay_value >= switch_value else "switch"
+def compute_reward(previous_state, current_state):
+    """Apply the paper's reward mapping to an observed cluster transition."""
+    action = transition_action(previous_state, current_state)
+    if previous_state == "low" and action == "stay":
+        return 1.0
+    if previous_state == "high" and action == "stay":
+        return 0.0
+    return -1.0
+
+
+def choose_action(previous_state, current_state, epsilon=None):
+    """Backward-compatible wrapper around the passive observation transition rule."""
+    return transition_action(previous_state, current_state)
 
 
 def train_ql_agent(train_tracks, labels, alpha=0.1, gamma=0.9, epsilon=0.1, episodes=500):
@@ -200,15 +208,10 @@ def train_ql_agent(train_tracks, labels, alpha=0.1, gamma=0.9, epsilon=0.1, epis
             for observed_sender, state in cluster_state.items():
                 previous_state = sender_state.get(observed_sender)
                 q = q_tables[observed_sender]
-                action = choose_action(state, q, epsilon)
 
                 if previous_state is not None:
-                    if previous_state == "low" and action == "stay":
-                        reward = 1.0
-                    elif previous_state == "high" and action == "switch":
-                        reward = 1.0
-                    else:
-                        reward = -1.0
+                    action = transition_action(previous_state, state)
+                    reward = compute_reward(previous_state, state)
 
                     q_old = q[(previous_state, action)]
                     q_next = max(q[(state, "stay")], q[(state, "switch")])
